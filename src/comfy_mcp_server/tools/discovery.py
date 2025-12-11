@@ -142,6 +142,20 @@ def register_discovery_tools(mcp):
             return [f"Error: {e}"]
 
     @mcp.tool()
+    def list_extensions(ctx: Context = None) -> list:
+        """List loaded ComfyUI extensions.
+
+        Returns list of installed extension names (custom node packs).
+        Use this to verify which custom nodes are available (e.g., fal.ai connector).
+        """
+        if ctx:
+            ctx.info("Listing extensions...")
+        try:
+            return comfy_get("/extensions")
+        except Exception as e:
+            return [f"Error: {e}"]
+
+    @mcp.tool()
     def refresh_nodes(ctx: Context = None) -> str:
         """Refresh the node cache.
 

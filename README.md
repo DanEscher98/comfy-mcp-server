@@ -98,6 +98,7 @@ export OUTPUT_MODE=file
 | `list_models(folder="checkpoints")` | List models in a folder |
 | `list_model_folders()` | List available model folder types |
 | `list_embeddings()` | List available embeddings |
+| `list_extensions()` | List loaded extensions (custom node packs) |
 | `refresh_nodes()` | Refresh cached node list from ComfyUI |
 
 ### Workflow Management Tools
@@ -195,6 +196,46 @@ nodes = list_nodes(filter="fal")
 info = get_node_info("RemoteCheckpointLoader_fal")
 ```
 
+### Using fal.ai Connector
+
+The [ComfyUI-fal-Connector](https://github.com/badayvedat/ComfyUI-fal-Connector) enables cloud GPU inference via fal.ai.
+
+```python
+# 1. Verify fal.ai extension is loaded
+extensions = list_extensions()
+# Should include "ComfyUI-fal-Connector"
+
+# 2. List available fal.ai nodes
+fal_nodes = list_nodes(filter="fal")
+# Returns: ["RemoteCheckpointLoader_fal", "StringInput_fal", "SaveImage_fal", ...]
+
+# 3. Get node details
+info = get_node_info("RemoteCheckpointLoader_fal")
+# Shows available checkpoints: flux-dev, flux-schnell, sd3.5-large, etc.
+
+# 4. Build a fal.ai workflow
+wf = create_workflow()
+wf = add_node(wf, "1", "RemoteCheckpointLoader_fal", {
+    "ckpt_name": "flux-dev"
+})
+wf = add_node(wf, "2", "StringInput_fal", {
+    "text": "a futuristic city at sunset, cyberpunk style"
+})
+wf = add_node(wf, "3", "CLIPTextEncode", {
+    "text": ["2", 0],
+    "clip": ["1", 1]
+})
+# ... add sampler, VAE decode, save image nodes
+
+# 5. Execute on fal.ai cloud GPUs
+result = execute_workflow(wf, output_node_id="9")
+```
+
+**Environment Setup:**
+```bash
+export FAL_KEY=your-fal-api-key
+```
+
 ## Architecture
 
 ```
@@ -247,7 +288,7 @@ Target: **ComfyUI 0.3.x - 0.4.x**
 | `/system_stats` | GET | Server health/resources | ✅ Implemented |
 | `/view` | GET | Retrieve generated images | ✅ Implemented |
 | `/embeddings` | GET | List available embeddings | ✅ Implemented |
-| `/extensions` | GET | List loaded extensions | ❌ Not implemented |
+| `/extensions` | GET | List loaded extensions | ✅ Implemented |
 | `/upload/image` | POST | Upload image for workflows | ❌ Not implemented |
 | `/upload/mask` | POST | Upload mask for inpainting | ❌ Not implemented |
 | `/free` | POST | Free VRAM/memory | ❌ Not implemented |
