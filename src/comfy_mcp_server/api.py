@@ -7,6 +7,7 @@ import json
 import logging
 import time
 import urllib
+from collections.abc import Callable
 from functools import lru_cache
 from urllib import request
 from urllib.error import HTTPError, URLError
@@ -118,7 +119,7 @@ def poll_for_result(
     output_node_id: str,
     max_attempts: int | None = None,
     interval: float | None = None,
-    on_poll: callable | None = None,
+    on_poll: Callable | None = None,
 ) -> bytes | None:
     """Poll history until result is ready.
 

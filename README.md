@@ -227,6 +227,37 @@ uv run pytest tests/
 uv run ruff format src/
 ```
 
+## ComfyUI API Coverage
+
+Target: **ComfyUI 0.3.x - 0.4.x**
+
+| API Endpoint | Method | Description | Status |
+|--------------|--------|-------------|--------|
+| `/prompt` | POST | Submit workflow for execution | ✅ Implemented |
+| `/queue` | GET | View running/pending jobs | ✅ Implemented |
+| `/queue` | POST | Clear queue / delete items | ✅ Implemented |
+| `/history` | GET | View generation history | ✅ Implemented |
+| `/history/{id}` | GET | Get specific job result | ✅ Implemented |
+| `/history` | POST | Delete history entries | ⚠️ Partial |
+| `/interrupt` | POST | Stop current generation | ✅ Implemented |
+| `/object_info` | GET | List all available nodes | ✅ Implemented |
+| `/object_info/{node}` | GET | Get node parameters/inputs | ✅ Implemented |
+| `/models` | GET | List model folders | ✅ Implemented |
+| `/models/{folder}` | GET | List models in folder | ✅ Implemented |
+| `/system_stats` | GET | Server health/resources | ✅ Implemented |
+| `/view` | GET | Retrieve generated images | ✅ Implemented |
+| `/embeddings` | GET | List available embeddings | ✅ Implemented |
+| `/extensions` | GET | List loaded extensions | ❌ Not implemented |
+| `/upload/image` | POST | Upload image for workflows | ❌ Not implemented |
+| `/upload/mask` | POST | Upload mask for inpainting | ❌ Not implemented |
+| `/free` | POST | Free VRAM/memory | ❌ Not implemented |
+| `/api/userdata/*` | * | User data management | ❌ Not implemented |
+
+### Implementation Notes
+
+- **Partial**: History deletion is not fully exposed as a tool
+- **Not implemented**: Image/mask upload, memory management, and user data APIs are planned for future releases
+
 ## Compatibility
 
 - **MCP Server Version**: 0.2.0
