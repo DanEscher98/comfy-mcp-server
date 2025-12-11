@@ -1,15 +1,36 @@
 """Configuration settings for ComfyUI MCP Server.
 
 Settings are loaded from environment variables with sensible defaults.
+Looks for .env files in current directory and parent directory.
 """
 
 import logging
 from pathlib import Path
 
 from pydantic import Field, field_validator
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 logger = logging.getLogger(__name__)
+
+
+def _find_env_files() -> list[Path]:
+    """Find .env files in current and parent directories."""
+    env_files = []
+    cwd = Path.cwd()
+
+    # Check current directory
+    if (cwd / ".env").exists():
+        env_files.append(cwd / ".env")
+
+    # Check parent directory (for when running from mcp/ submodule)
+    if (cwd.parent / ".env").exists():
+        env_files.append(cwd.parent / ".env")
+
+    # Check two levels up (for src/comfy_mcp_server/)
+    if (cwd.parent.parent / ".env").exists():
+        env_files.append(cwd.parent.parent / ".env")
+
+    return env_files if env_files else [Path(".env")]
 
 
 class Settings(BaseSettings):
@@ -53,12 +74,12 @@ class Settings(BaseSettings):
         default=1.0, ge=0.1, le=10.0, description="Seconds between status polls"
     )
 
-    model_config = {
-        "env_prefix": "",
-        "extra": "ignore",
-        "env_file": ".env",
-        "env_file_encoding": "utf-8",
-    }
+    model_config = SettingsConfigDict(
+        env_prefix="",
+        extra="ignore",
+        env_file=_find_env_files(),
+        env_file_encoding="utf-8",
+    )
 
     @field_validator("comfy_url_external", mode="before")
     @classmethod
