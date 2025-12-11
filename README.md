@@ -2,105 +2,244 @@
 
 [![smithery badge](https://smithery.ai/badge/@lalanikarim/comfy-mcp-server)](https://smithery.ai/server/@lalanikarim/comfy-mcp-server)
 
-> A server using FastMCP framework to generate images based on prompts via a remote Comfy server.
+> MCP server for comprehensive ComfyUI workflow automation, management, and image generation.
 
 ## Overview
 
-This script sets up a server using the FastMCP framework to generate images based on prompts using a specified workflow. It interacts with a remote Comfy server to submit prompts and retrieve generated images.
+This server provides Claude Code (and other MCP clients) with full access to ComfyUI capabilities:
+
+- **System monitoring**: Check server health, queue status, and history
+- **Workflow execution**: Run saved workflows or execute custom workflow dicts
+- **Workflow management**: Create, modify, save, and validate workflows
+- **Node discovery**: List available nodes, models, and their parameters
+- **Image generation**: Simple prompt-based generation or full workflow control
 
 ## Prerequisites
 
-- [uv](https://docs.astral.sh/uv/) package and project manager for Python.
-- Workflow file exported from Comfy UI. This code includes a sample `Flux-Dev-ComfyUI-Workflow.json` which is only used here as reference. You will need to export from your workflow and set the environment variables accordingly.
+- [uv](https://docs.astral.sh/uv/) - Python package manager
+- Running ComfyUI server (local or remote)
+- Workflow files exported from ComfyUI (API format)
 
-You can install the required packages for local development:
+## Installation
 
 ```bash
-uvx mcp[cli]
+# Install from source
+git clone https://github.com/DanEscher98/comfy-mcp-server.git
+cd comfy-mcp-server
+uv sync
 ```
 
 ## Configuration
 
-Set the following environment variables:
+### Environment Variables
 
-- `COMFY_URL` to point to your Comfy server URL.
-- `COMFY_WORKFLOW_JSON_FILE` to point to the absolute path of the API export json file for the comfyui workflow.
-- `PROMPT_NODE_ID` to the id of the text prompt node.
-- `OUTPUT_NODE_ID` to the id of the output node with the final image.
-- `OUTPUT_MODE` to either `url` or `file` to select desired output.
+| Variable | Required | Default | Description |
+|----------|----------|---------|-------------|
+| `COMFY_URL` | No | `http://localhost:8188` | ComfyUI server URL |
+| `COMFY_URL_EXTERNAL` | No | Same as COMFY_URL | External URL for image retrieval |
+| `COMFY_WORKFLOWS_DIR` | No | - | Directory containing workflow JSON files |
+| `COMFY_WORKFLOW_JSON_FILE` | No | - | Default workflow file for `generate_image` |
+| `PROMPT_NODE_ID` | No | - | Default prompt node ID for `generate_image` |
+| `OUTPUT_NODE_ID` | No | - | Default output node ID |
+| `OUTPUT_MODE` | No | `file` | Output mode: `file` (Image) or `url` (string URL) |
+| `POLL_TIMEOUT` | No | `60` | Max seconds to wait for workflow (1-300) |
+| `POLL_INTERVAL` | No | `1.0` | Seconds between status polls (0.1-10.0) |
 
-Optionally, if you have an [Ollama](https://ollama.com) server running, you can connect to it for prompt generation.
-
-- `OLLAMA_API_BASE` to the url where ollama is running.
-- `PROMPT_LLM` to the name of the model hosted on ollama for prompt generation.
-
-Example:
+### Example Configuration
 
 ```bash
-export COMFY_URL=http://your-comfy-server-url:port
-export COMFY_WORKFLOW_JSON_FILE=/path/to/the/comfyui_workflow_export.json
-export PROMPT_NODE_ID=6 # use the correct node id here
-export OUTPUT_NODE_ID=9 # use the correct node id here
+export COMFY_URL=http://localhost:8188
+export COMFY_WORKFLOWS_DIR=/path/to/workflows
+export COMFY_WORKFLOW_JSON_FILE=/path/to/workflows/default.json
+export PROMPT_NODE_ID=6
+export OUTPUT_NODE_ID=9
 export OUTPUT_MODE=file
 ```
 
-## Usage
-
-Comfy MCP Server can be launched by the following command:
-
-```bash
-uvx comfy-mcp-server
-```
-
-### Example Claude Desktop Config
+### Claude Desktop Config
 
 ```json
 {
   "mcpServers": {
-    "Comfy MCP Server": {
-      "command": "/path/to/uvx",
-      "args": [
-        "comfy-mcp-server"
-      ],
+    "ComfyUI": {
+      "command": "uv",
+      "args": ["--directory", "/path/to/comfy-mcp-server", "run", "comfy-mcp-server"],
       "env": {
-        "COMFY_URL": "http://your-comfy-server-url:port",
-        "COMFY_WORKFLOW_JSON_FILE": "/path/to/the/comfyui_workflow_export.json",
+        "COMFY_URL": "http://localhost:8188",
+        "COMFY_WORKFLOWS_DIR": "/path/to/workflows",
+        "COMFY_WORKFLOW_JSON_FILE": "/path/to/workflows/default.json",
         "PROMPT_NODE_ID": "6",
-        "OUTPUT_NODE_ID": "9",
-        "OUTPUT_MODE": "file",
+        "OUTPUT_NODE_ID": "9"
       }
     }
   }
 }
-
 ```
 
-## Functionality
+## Available Tools
 
-### `generate_image(prompt: str, ctx: Context) -> Image | str`
+### System Tools
 
-This function generates an image using a specified prompt. It follows these steps:
+| Tool | Description |
+|------|-------------|
+| `get_system_stats()` | Get ComfyUI server health: version, memory, device info |
+| `get_queue_status()` | Get current queue: running and pending jobs |
+| `get_history(limit=10)` | Get recent generation history (1-100 entries) |
+| `cancel_current(prompt_id=None)` | Interrupt current generation |
+| `clear_queue(delete_ids=None)` | Clear queue or delete specific items |
 
-1. Checks if all the environment variable are set.
-2. Loads a prompt template from a JSON file.
-3. Submits the prompt to the Comfy server.
-4. Polls the server for the status of the prompt processing.
-5. Retrieves and returns the generated image once it's ready.
+### Discovery Tools
 
-### `generate_prompt(topic: str, ctx: Context) -> str`
+| Tool | Description |
+|------|-------------|
+| `list_nodes(filter=None)` | List available ComfyUI nodes (optional filter) |
+| `get_node_info(node_name)` | Get detailed node info: inputs, outputs, parameters |
+| `search_nodes(query)` | Search nodes by name, type, or category |
+| `list_models(folder="checkpoints")` | List models in a folder |
+| `list_model_folders()` | List available model folder types |
+| `list_embeddings()` | List available embeddings |
+| `refresh_nodes()` | Refresh cached node list from ComfyUI |
 
-This function generates a comprehensive image generation prompt from specified topic.
+### Workflow Management Tools
 
-## Dependencies
+| Tool | Description |
+|------|-------------|
+| `list_workflows()` | List available workflow files |
+| `load_workflow(workflow_name)` | Load a workflow from file |
+| `save_workflow(workflow, name)` | Save a workflow to file |
+| `create_workflow()` | Create an empty workflow structure |
+| `add_node(workflow, node_id, class_type, inputs)` | Add a node to a workflow |
+| `remove_node(workflow, node_id)` | Remove a node from a workflow |
+| `update_node_input(workflow, node_id, input_name, value)` | Update a node's input |
+| `validate_workflow(workflow)` | Validate workflow structure and node types |
+| `list_templates()` | List available workflow templates |
+| `get_workflow_template(template_name)` | Get a pre-built workflow template |
 
-- `mcp`: For setting up the FastMCP server.
-- `json`: For handling JSON data.
-- `urllib`: For making HTTP requests.
-- `time`: For adding delays in polling.
-- `os`: For accessing environment variables.
-- `langchain`: For creating simple LLM Prompt chain to generate image generation prompt from topic.
-- `langchain-ollama`: For ollama specific modules for LangChain.
+### Execution Tools
+
+| Tool | Description |
+|------|-------------|
+| `generate_image(prompt)` | Generate image using default workflow (simple interface) |
+| `run_workflow(workflow_name, inputs=None, output_node_id=None)` | Execute a saved workflow file |
+| `execute_workflow(workflow, output_node_id)` | Execute an arbitrary workflow dict |
+| `submit_workflow(workflow)` | Submit workflow without waiting (returns prompt_id) |
+| `get_prompt_status(prompt_id)` | Get status of a submitted prompt |
+| `get_result_image(prompt_id, output_node_id)` | Get result image from completed prompt |
+
+## Usage Examples
+
+### Simple Image Generation
+
+```python
+# Using default workflow configuration
+result = generate_image("a cyberpunk city at sunset")
+```
+
+### Run a Named Workflow
+
+```python
+# Execute saved workflow with custom inputs
+result = run_workflow(
+    "flux-dev.json",
+    inputs={"6": {"text": "a forest landscape"}},
+    output_node_id="9"
+)
+```
+
+### Build and Execute Custom Workflow
+
+```python
+# 1. Create empty workflow
+wf = create_workflow()
+
+# 2. Add nodes
+wf = add_node(wf, "1", "CheckpointLoaderSimple", {
+    "ckpt_name": "flux-dev.safetensors"
+})
+wf = add_node(wf, "2", "CLIPTextEncode", {
+    "text": "beautiful sunset over mountains",
+    "clip": ["1", 1]  # Connect to checkpoint's CLIP output
+})
+wf = add_node(wf, "3", "KSampler", {
+    "model": ["1", 0],
+    "positive": ["2", 0],
+    # ... other inputs
+})
+
+# 3. Execute
+result = execute_workflow(wf, output_node_id="9")
+```
+
+### Async Workflow Submission
+
+```python
+# Submit without waiting
+submission = submit_workflow(workflow)
+prompt_id = submission["prompt_id"]
+
+# Check status later
+status = get_prompt_status(prompt_id)
+
+# Get result when ready
+if status["completed"]:
+    image = get_result_image(prompt_id, "9")
+```
+
+### Discover Available Nodes
+
+```python
+# List all fal.ai nodes
+nodes = list_nodes(filter="fal")
+
+# Get details about a specific node
+info = get_node_info("RemoteCheckpointLoader_fal")
+```
+
+## Architecture
+
+```
+comfy_mcp_server/
+├── __init__.py      # Entry point, FastMCP server
+├── api.py           # HTTP helpers, ComfyUI API functions
+├── models.py        # Pydantic models for type safety
+├── settings.py      # Configuration with pydantic-settings
+├── compat.py        # Version compatibility layer
+└── tools/           # MCP tool implementations
+    ├── system.py    # System monitoring tools
+    ├── discovery.py # Node/model discovery
+    ├── workflow.py  # Workflow management
+    └── execution.py # Workflow execution
+```
+
+## Development
+
+```bash
+# Install dev dependencies
+uv sync --all-extras
+
+# Run linting
+uv run ruff check src/
+
+# Run tests (requires running ComfyUI)
+uv run pytest tests/
+
+# Format code
+uv run ruff format src/
+```
+
+## Compatibility
+
+- **MCP Server Version**: 0.2.0
+- **Minimum ComfyUI**: 0.3.0
+- **Maximum Tested ComfyUI**: 0.4.x
+- **Python**: 3.10+
+
+The server includes a compatibility layer that handles API differences between ComfyUI versions and provides graceful degradation.
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](https://github.com/lalanikarim/comfy-mcp-server/blob/main/LICENSE) file for details.
+MIT License - see [LICENSE](LICENSE) file.
+
+## Credits
+
+Originally forked from [@lalanikarim/comfy-mcp-server](https://github.com/lalanikarim/comfy-mcp-server).
